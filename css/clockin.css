@@ -1,0 +1,100 @@
+/* Clock In Layout */
+.clockin-card {
+    background: linear-gradient(150deg, var(--accent-primary), var(--accent-primary-dark));
+    border-radius: 28px;
+    box-shadow: var(--shadow-soft);
+    padding: 30px 22px;
+    text-align: center;
+    margin-bottom: 16px;
+    color: #ffffff;
+}
+
+.clockin-date { font-size: 12px; color: rgba(255, 255, 255, 0.7); margin-bottom: 6px; }
+.clockin-time { font-size: 38px; font-weight: 700; font-family: 'Roboto Mono', monospace; margin-bottom: 16px; }
+
+.clockin-status { margin-bottom: 20px; }
+
+.clockin-card .status-badge {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+.clockin-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 18px;
+    background-color: #ffffff;
+    color: var(--accent-primary);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.clockin-btn:hover:not(:disabled) { background-color: #f1f0fb; }
+.clockin-btn:disabled { background-color: rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.7); cursor: not-allowed; }
+
+.clockin-location {
+    min-height: 16px;
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+.clockin-location-checking { color: rgba(255, 255, 255, 0.7); }
+.clockin-location-ok { color: #baf7d6; }
+.clockin-location-error { color: #ffd2d2; }
+
+.clockin-hours {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.clockin-hours-label { font-size: 11px; color: rgba(255, 255, 255, 0.7); letter-spacing: 0.5px; text-transform: uppercase; }
+.clockin-hours-value { font-size: 22px; font-weight: 700; font-family: 'Roboto Mono', monospace; color: #ffffff; }
+
+.clockin-history-card {
+    background-color: var(--bg-card);
+    border-radius: 24px;
+    box-shadow: var(--shadow-soft);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.clockin-history-header { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+
+.clockin-history-list { list-style: none; display: flex; flex-direction: column; }
+
+.clockin-history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.clockin-history-item:last-child { border-bottom: none; }
+
+.clockin-history-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.clockin-history-icon-in { background-color: var(--accent-success); }
+.clockin-history-icon-out { background-color: var(--accent-red); }
+
+.clockin-history-type { flex: 1; font-size: 12px; font-weight: 600; }
+.clockin-history-time { font-size: 12px; color: var(--text-muted); font-family: 'Roboto Mono', monospace; }
+.clockin-history-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px 0; }

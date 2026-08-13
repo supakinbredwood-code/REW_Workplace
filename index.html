@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REW Workplace</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/forms.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/clockin.css">
+    <link rel="stylesheet" href="css/approval.css">
+    <link rel="stylesheet" href="css/chat.css">
+    <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="phone-frame">
+
+        <!-- ==================== LOGIN ==================== -->
+        <div class="login-screen active" id="loginScreen">
+            <div class="login-card">
+                <div class="login-brand">
+                    <span class="brand-icon"><i class="fas fa-briefcase"></i></span>
+                    <span class="brand-text">REW Workplace</span>
+                </div>
+                <h1 class="login-title">Sign in</h1>
+                <form id="loginForm">
+                    <label class="approval-form-label">Username</label>
+                    <input type="text" class="approval-form-input" id="loginUsername" autocomplete="username" required>
+
+                    <label class="approval-form-label">Password</label>
+                    <input type="password" class="approval-form-input" id="loginPassword" autocomplete="current-password" required>
+
+                    <div class="login-error" id="loginError"></div>
+
+                    <button type="submit" class="approval-form-submit">Log In</button>
+                </form>
+                <div class="login-hint">Demo: aran / suda / kittipong / siriporn / pranee / somchai / anan — password: 1234</div>
+            </div>
+        </div>
+
+        <!-- ==================== APP ==================== -->
+        <div class="app-shell" id="appShell">
+            <div class="phone-content">
+
+                <!-- CLOCK IN / OUT -->
+                <section id="view-clockin" class="view active">
+                    <div class="mobile-header">
+                        <div class="mobile-user">
+                            <div>
+                                <div class="mobile-user-name" id="clockinUserName">-</div>
+                                <div class="mobile-user-role" id="clockinUserRole">-</div>
+                            </div>
+                            <div class="mobile-user-avatar" id="clockinUserAvatar">-</div>
+                        </div>
+                    </div>
+
+                    <div class="clockin-card">
+                        <div class="clockin-date" id="clockinDate">-</div>
+                        <div class="clockin-time" id="clockinTime">--:--:--</div>
+
+                        <div class="clockin-status">
+                            <span class="status-badge" id="clockinStatusBadge">Not Clocked In</span>
+                        </div>
+
+                        <button class="clockin-btn" id="clockinActionBtn">Clock In</button>
+
+                        <div class="clockin-location" id="clockinLocationMsg"></div>
+
+                        <div class="clockin-hours">
+                            <span class="clockin-hours-label">Working Hours</span>
+                            <span class="clockin-hours-value" id="clockinHoursValue">0h 0m</span>
+                        </div>
+                    </div>
+
+                    <div class="clockin-history-card">
+                        <div class="clockin-history-header">Today's History</div>
+                        <ul class="clockin-history-list" id="clockinHistoryList">
+                            <li class="clockin-history-empty">No records yet</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- APPROVAL -->
+                <section id="view-approval" class="view">
+
+                    <div class="approval-screen active" id="approvalListScreen">
+                        <div class="mobile-header">
+                            <h1 class="mobile-title">Approval</h1>
+                        </div>
+
+                        <div class="approval-mode-toggle" id="approvalModeToggle">
+                            <button class="approval-mode-btn active" data-mode="myRequests">My Requests</button>
+                            <button class="approval-mode-btn" data-mode="toApprove" id="toApproveModeBtn" hidden>To Approve</button>
+                        </div>
+
+                        <div class="approval-tabs" id="approvalTabs">
+                            <button class="approval-tab-link active" data-status="all">All</button>
+                            <button class="approval-tab-link" data-status="pending">Pending</button>
+                            <button class="approval-tab-link" data-status="approved">Approved</button>
+                            <button class="approval-tab-link" data-status="rejected">Rejected</button>
+                        </div>
+
+                        <div class="approval-list" id="approvalList"></div>
+
+                        <button class="approval-fab" id="approvalNewRequestBtn"><i class="fas fa-plus"></i></button>
+                    </div>
+
+                    <div class="approval-screen" id="approvalChooserScreen">
+                        <div class="chat-conversation-header">
+                            <button class="chat-back-btn" id="approvalChooserBackBtn"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">New Request</span>
+                        </div>
+                        <div class="approval-chooser-options">
+                            <button class="approval-chooser-card" data-request-type="overtime">
+                                <i class="fas fa-business-time"></i>
+                                <span>Request OT</span>
+                            </button>
+                            <button class="approval-chooser-card" data-request-type="requisition">
+                                <i class="fas fa-box-open"></i>
+                                <span>Request Item</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="approval-screen" id="approvalOtFormScreen">
+                        <div class="chat-conversation-header">
+                            <button class="chat-back-btn" data-back-to="chooser"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">Request OT</span>
+                        </div>
+                        <form class="approval-form" id="otForm">
+                            <label class="approval-form-label">Date</label>
+                            <input type="date" class="approval-form-input" id="otDate" required>
+
+                            <label class="approval-form-label">Hours</label>
+                            <input type="number" min="1" max="12" class="approval-form-input" id="otHours" required>
+
+                            <label class="approval-form-label">Reason</label>
+                            <textarea class="approval-form-input" id="otReason" rows="4" required></textarea>
+
+                            <button type="submit" class="approval-form-submit">Submit Request</button>
+                        </form>
+                    </div>
+
+                    <div class="approval-screen" id="approvalItemFormScreen">
+                        <div class="chat-conversation-header">
+                            <button class="chat-back-btn" data-back-to="chooser"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">Request Item</span>
+                        </div>
+                        <form class="approval-form" id="itemForm">
+                            <label class="approval-form-label">Item Name</label>
+                            <input type="text" class="approval-form-input" id="itemName" required>
+
+                            <label class="approval-form-label">Quantity</label>
+                            <input type="number" min="1" class="approval-form-input" id="itemQty" required>
+
+                            <label class="approval-form-label">Reason</label>
+                            <textarea class="approval-form-input" id="itemReason" rows="4" required></textarea>
+
+                            <button type="submit" class="approval-form-submit">Submit Request</button>
+                        </form>
+                    </div>
+
+                </section>
+
+                <!-- CHAT -->
+                <section id="view-chat" class="view">
+
+                    <div class="chat-screen chat-screen-list active" id="chatListScreen">
+                        <div class="mobile-header">
+                            <h1 class="mobile-title">Chat</h1>
+                        </div>
+                        <div class="chat-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="chatSearchInput" placeholder="Search">
+                        </div>
+                        <ul class="chat-contact-list" id="chatContactList"></ul>
+                    </div>
+
+                    <div class="chat-screen chat-screen-conversation" id="chatConversationScreen">
+                        <div class="chat-conversation-header" id="chatConversationHeader">
+                            <button class="chat-back-btn" id="chatBackBtn"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">Select a conversation</span>
+                        </div>
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input-bar">
+                            <input type="text" id="chatMessageInput" placeholder="Type a message..." disabled>
+                            <button id="chatSendBtn" disabled><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- PROFILE -->
+                <section id="view-profile" class="view">
+
+                    <div class="profile-screen active" id="profileViewScreen">
+                        <div class="mobile-header">
+                            <h1 class="mobile-title">Profile</h1>
+                        </div>
+
+                        <div class="profile-card">
+                            <div class="profile-avatar" id="profileAvatar">-</div>
+                            <div class="profile-name" id="profileName">-</div>
+                            <div class="profile-role" id="profileRole">-</div>
+                            <span class="profile-account-type" id="profileAccountType">-</span>
+                            <div class="profile-username" id="profileUsername">-</div>
+
+                            <div class="profile-info-list" id="profileInfoList"></div>
+
+                            <button class="profile-edit-btn" id="profileEditBtn">Edit Profile</button>
+                            <button class="profile-admin-btn" id="profileAdminBtn" hidden>Admin Settings</button>
+                            <button class="profile-logout-btn" id="profileLogoutBtn">Log Out</button>
+                        </div>
+                    </div>
+
+                    <div class="profile-screen" id="profileEditScreen">
+                        <div class="chat-conversation-header">
+                            <button class="chat-back-btn" id="profileEditBackBtn"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">Edit Profile</span>
+                        </div>
+
+                        <form class="approval-form" id="profileEditForm">
+                            <div class="profile-photo-edit">
+                                <div class="profile-avatar profile-avatar-lg" id="profileEditAvatarPreview">-</div>
+                                <label class="profile-photo-btn" for="profilePhotoInput">Change Photo</label>
+                                <input type="file" accept="image/*" id="profilePhotoInput" hidden>
+                            </div>
+
+                            <label class="approval-form-label">Full Name</label>
+                            <input type="text" class="approval-form-input" id="profileEditName" required>
+
+                            <label class="approval-form-label">Email</label>
+                            <input type="email" class="approval-form-input" id="profileEditEmail" placeholder="name@company.com">
+
+                            <label class="approval-form-label">Phone</label>
+                            <input type="tel" class="approval-form-input" id="profileEditPhone" placeholder="08X-XXX-XXXX">
+
+                            <label class="approval-form-label">Address</label>
+                            <textarea class="approval-form-input" id="profileEditAddress" rows="3"></textarea>
+
+                            <button type="submit" class="approval-form-submit">Save Changes</button>
+                        </form>
+                    </div>
+
+                    <div class="profile-screen" id="profileAdminScreen">
+                        <div class="chat-conversation-header">
+                            <button class="chat-back-btn" id="profileAdminBackBtn"><i class="fas fa-arrow-left"></i></button>
+                            <span class="chat-conversation-name">Admin Settings</span>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-section-header">
+                                <span class="settings-section-icon settings-icon-org"><i class="fas fa-sitemap"></i></span>
+                                <div>
+                                    <div class="settings-section-title">Organization</div>
+                                    <div class="settings-section-desc">Set each person's position, warehouse, and approver</div>
+                                </div>
+                            </div>
+                            <div class="org-card">
+                                <div id="orgTableBody"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-section-header">
+                                <span class="settings-section-icon settings-icon-zone"><i class="fas fa-map-location-dot"></i></span>
+                                <div>
+                                    <div class="settings-section-title">Clock-In Zones</div>
+                                    <div class="settings-section-desc">GPS location and allowed radius per warehouse</div>
+                                </div>
+                            </div>
+                            <div class="org-card">
+                                <div id="zoneTableBody"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+            </div>
+
+            <nav class="bottom-nav" id="bottomNav">
+                <a href="#" class="bottom-nav-link active" data-view="clockin">
+                    <span class="bottom-nav-icon"><i class="fas fa-clock"></i></span>
+                    <span class="bottom-nav-text">Clock</span>
+                </a>
+                <a href="#" class="bottom-nav-link" data-view="approval">
+                    <span class="bottom-nav-icon"><i class="fas fa-square-check"></i></span>
+                    <span class="bottom-nav-text">Approval</span>
+                </a>
+                <a href="#" class="bottom-nav-link" data-view="chat">
+                    <span class="bottom-nav-icon"><i class="fas fa-comments"></i></span>
+                    <span class="bottom-nav-text">Chat</span>
+                </a>
+                <a href="#" class="bottom-nav-link" data-view="profile">
+                    <span class="bottom-nav-icon"><i class="fas fa-user"></i></span>
+                    <span class="bottom-nav-text">Profile</span>
+                </a>
+            </nav>
+        </div>
+
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

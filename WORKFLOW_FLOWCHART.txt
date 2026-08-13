@@ -1,0 +1,605 @@
+================================================================================
+REW WORKPLACE — CROSS-FUNCTIONAL FLOWCHART (SWIMLANE) ฉบับละเอียด
+================================================================================
+เอกสารนี้อธิบายการทำงานของระบบทั้งหมดในรูปแบบ Cross-Functional Flowchart
+(Swimlane Diagram) เวอร์ชันข้อความ โดยแบ่งเป็น "เลน" (Lane) ตามผู้ที่รับผิดชอบ
+ขั้นตอนนั้น ๆ อ่านจากบนลงล่างตามลูกศร | และ v แต่ละกล่องจะระบุชื่อเลนไว้ใน [ ]
+พร้อมอ้างอิงไฟล์/ฟังก์ชันจริงในโค้ด เพื่อให้ตรวจสอบย้อนกลับไปที่ source ได้
+
+หมายเหตุสถาปัตยกรรม:
+- แอปนี้เป็น client-side ล้วน (ไม่มี backend / ไม่มีการเรียก API จริง)
+- ข้อมูลหลัก (users, approvalRequests, chatMessages, warehouseZones ฯลฯ)
+  เป็น in-memory JavaScript array/object ใน js/data/*.js → หายเมื่อ refresh หน้า
+- มีเพียงค่าเดียวที่ persist ผ่าน localStorage คือ session (key
+  "rewworkplace_session" เก็บ user.id) ดูฟังก์ชันใน js/services/authService.js
+
+--------------------------------------------------------------------------------
+LEGEND — คำจำกัดความของเลน (Swimlanes)
+--------------------------------------------------------------------------------
+[Employee]   ผู้ใช้ทั่วไป / พนักงาน — โต้ตอบกับหน้าจอผ่านการคลิก/พิมพ์
+[Approver]   ผู้ใช้ที่มี role === "approver" — พนักงานที่มีสิทธิ์อนุมัติคำขอ
+[Admin]      ผู้ใช้ที่มี isAdmin === true — จัดการ Organization และ Clock-in Zone
+[Device]     Browser API ของอุปกรณ์ (เช่น navigator.geolocation, FileReader)
+[UI]         Component layer (js/components/*.js) — จัดการ DOM, event, render
+[Service]    Business logic layer (js/services/*.js) — กฎเกณฑ์ของระบบ
+[Data]       Data layer (js/data/*.js in-memory) + localStorage (session)
+
+--------------------------------------------------------------------------------
+สารบัญ
+--------------------------------------------------------------------------------
+1. App Bootstrap & Session Restore
+2. Login
+3. Clock In / Clock Out (พร้อมตรวจสอบพิกัด GPS)
+4. Chat — เปิดแชทและส่งข้อความ
+5. Approval — พนักงานสร้างคำขอ (Request OT / Request Item)
+6. Approval — ผู้อนุมัติพิจารณาคำขอ (Approve / Reject)
+7. Profile — ดูและแก้ไขโปรไฟล์ (รวมเปลี่ยนรูป)
+8. Admin — ตั้งค่า Organization (ตำแหน่ง/คลัง/สายอนุมัติ)
+9. Admin — ตั้งค่า Clock-in Zone (พิกัด GPS และรัศมี)
+10. Logout
+11. Bottom Navigation (การสลับหน้าจอหลัก)
+
+================================================================================
+1. APP BOOTSTRAP & SESSION RESTORE
+================================================================================
+[Employee]   เปิดเบราว์เซอร์เข้า index.html
+      |
+      v
+[UI: main.js]   event "DOMContentLoaded" ทำงาน เรียก init ทุกโมดูลตามลำดับ:
+                 initNavigation(), initClockInPanel(), initApprovalPanel(),
+                 initChatPanel(), initProfilePanel(showLogin),
+                 initLoginScreen(onAuthReady)
+      |
+      v
+[Service: authService.js]   restoreSession()
+                 อ่านค่า localStorage["rewworkplace_session"]
+      |
+      v
+[Data: localStorage]   คืนค่า user.id ที่เคยบันทึกไว้ (ถ้ามี)
+      |
+      v
+   <พบ session ที่ถูกต้องหรือไม่?>
+      |                                              |
+     ไม่พบ / ไม่มี                                    พบ (user.id ตรงกับ users[])
+      |                                              |
+      v                                              v
+[UI: main.js]  showLogin()                [UI: main.js]  onAuthReady()
+   → แสดง #loginScreen                        → refreshClockInPanel()
+                                               → refreshApprovalPanel()
+                                               → refreshProfilePanel()
+                                               → showApp() (ซ่อน login, โชว์ #appShell)
+      |                                              |
+      v                                              v
+[Employee]  เห็นหน้า Sign in               [Employee]  เข้าสู่หน้า Clock-in ทันที (ข้าม login)
+
+================================================================================
+2. LOGIN
+================================================================================
+[Employee]   กรอก Username / Password ในฟอร์ม #loginForm แล้วกด "Log In"
+      |
+      v
+[UI: loginScreen.js]   submit handler เรียก e.preventDefault()
+                 อ่านค่า #loginUsername, #loginPassword (trim username)
+      |
+      v
+[Service: authService.js]   login(username, password)
+      |
+      v
+[Data: orgData.js → users[]]   ค้นหา user ที่ username และ password ตรงกันแบบ
+                 exact match (plain text — ไม่มีการเข้ารหัส เพราะเป็น demo data)
+      |
+      v
+   <พบผู้ใช้ที่ตรงกันหรือไม่?>
+      |                                       |
+     ไม่พบ                                    พบ
+      |                                       |
+      v                                       v
+[UI: loginScreen.js]              [Service: authService.js]
+   แสดงข้อความ                          - เก็บ user ลงตัวแปร currentUser (in-memory)
+   "Invalid username or password."      - localStorage.setItem("rewworkplace_session", user.id)
+   ใน #loginError                            |
+      |                                       v
+      v                            [UI: loginScreen.js]  form.reset() แล้วเรียก onSuccess()
+[Employee]  แก้ไขแล้วลองใหม่               |
+   (วนกลับไปจุดเริ่มของ Flow นี้)            v
+                                   [UI: main.js]  onAuthReady()
+                                       → refresh 3 panel + showApp()
+                                       |
+                                       v
+                                   [Employee]  เข้าสู่หน้า Clock-in (หน้าแรกของแอป)
+
+หมายเหตุ: บัญชีทดสอบ (username / password: 1234 ทุกบัญชี)
+  aran, suda, kittipong, siriporn, pranee, somchai, anan
+  (ดูรายละเอียด role/isAdmin ในหัวข้อ 6 และ 8-9)
+
+================================================================================
+3. CLOCK IN / CLOCK OUT (พร้อมตรวจสอบพิกัด GPS)
+================================================================================
+[UI: clockInPanel.js]   หลัง login เรียก renderUserInfo(), renderStatus(),
+                 renderHistory(), tick() ทุก 1 วิ (setInterval) เพื่ออัปเดต
+                 นาฬิกา/วันที่แบบเรียลไทม์บนการ์ด clockin-card
+      |
+      v
+[Employee]   กดปุ่ม #clockinActionBtn ("Clock In" หรือ "Clock Out")
+      |
+      v
+[UI: clockInPanel.js]   ตรวจสอบ getCurrentUser() ต้องไม่ null
+      |
+      v
+   <navigator.geolocation รองรับหรือไม่?>
+      |                                          |
+     ไม่รองรับ                                    รองรับ
+      |                                          |
+      v                                          v
+[UI]  แสดง "Geolocation is not      [UI]  แสดง "Checking location..."
+   supported on this device."           แล้วเรียก
+   → จบ                                 navigator.geolocation.getCurrentPosition(...)
+                                              |
+                                              v
+                                    [Device: Browser Geolocation API]
+                                       ขอสิทธิ์และอ่านพิกัดปัจจุบันของอุปกรณ์
+                                       (enableHighAccuracy: true, timeout 10s)
+                                              |
+                          -------------------------------------------
+                          |                                          |
+                    ผู้ใช้ปฏิเสธสิทธิ์ / timeout              ได้พิกัด (lat, lng) สำเร็จ
+                          |                                          |
+                          v                                          v
+                [UI] แสดง "Location permission          [Service: clockInService.js]
+                  denied. Cannot clock in/out."             checkZone(lat, lng)
+                  → จบ                                            |
+                                                                   v
+                                                    [Service]  ดึง warehouse ของ
+                                                       user ปัจจุบัน แล้วเรียก
+                                                       getZone(user.warehouse)
+                                                                   |
+                                                                   v
+                                                    [Data: warehouseZoneData.js]
+                                                       คืนค่า {lat, lng, radiusMeters}
+                                                       ของคลังนั้น (ถ้ามีตั้งค่าไว้)
+                                                                   |
+                                                                   v
+                                                       <มี zone ตั้งค่าไว้หรือไม่?>
+                                                          |                    |
+                                                        ไม่มี                   มี
+                                                          |                    |
+                                                          v                    v
+                                                [UI] แสดง "No clock-in    [Service: geo.js]
+                                                 zone configured for      distanceMeters(lat1,
+                                                 your warehouse yet."     lng1, lat2, lng2)
+                                                 → จบ                     คำนวณระยะทางจริง
+                                                                          (Haversine formula)
+                                                                              |
+                                                                              v
+                                                                <ระยะทาง <= radiusMeters?>
+                                                                   |                  |
+                                                                 นอกรัศมี              อยู่ในรัศมี
+                                                                   |                  |
+                                                                   v                  v
+                                                    [UI] แสดง "Outside      [UI] แสดง "Within the
+                                                     the allowed area        allowed area (Xm
+                                                     (Xm away)."             from center)."
+                                                     → จบ                        |
+                                                                                  v
+                                                                    <สถานะปัจจุบันของผู้ใช้คืออะไร?>
+                                                                       |                    |
+                                                              not-clocked-in          working
+                                                                       |                    |
+                                                                       v                    v
+                                                          [Service: clockInService.js]  [Service]
+                                                             clockIn()                    clockOut()
+                                                             - status = "working"         - status = "clocked-out"
+                                                             - clockInAt = now             - clockOutAt = now
+                                                             - history.push({type:"in"})   - history.push({type:"out"})
+                                                                       |                    |
+                                                                       v                    v
+                                                          [Data: statesByUser{}]  เก็บ state แยกตาม user.id
+                                                          (in-memory, หายเมื่อ refresh หน้า)
+                                                                       |
+                                                                       v
+                                                    [UI: clockInPanel.js]  renderStatus() + renderHistory()
+                                                       - เปลี่ยนป้าย badge, ปุ่ม (Clock Out / Clocked Out)
+                                                       - อัปเดต Working Hours (formatDuration)
+                                                       - เพิ่มแถวใหม่ใน Today's History
+                                                                       |
+                                                                       v
+                                                             [Employee]  เห็นสถานะอัปเดตทันทีบนหน้าจอ
+
+หมายเหตุ: ปุ่ม Clock Out จะกดซ้ำไม่ได้เมื่อสถานะเป็น "clocked-out" (disabled)
+ต้องรอรอบถัดไป — ไม่มี flow ให้ Clock In ซ้ำในวันเดียวกันในโค้ดปัจจุบัน
+
+================================================================================
+4. CHAT — เปิดแชทและส่งข้อความ
+================================================================================
+[UI: chatPanel.js]   initChatPanel() เรียก renderContactList() แสดงรายชื่อ
+                 ผู้ติดต่อทั้งหมดจาก chatData.js ทันทีที่เข้าแท็บ Chat
+      |
+      v
+[Employee]   (ทางเลือก) พิมพ์คำค้นใน #chatSearchInput
+      |
+      v
+[UI]   event "input" → searchContacts(term) กรองด้วย .toLowerCase().includes()
+      |                                                          |
+   [Service: chatService.js] filter ตาม name             [Data: chatData.js]
+                                                            chatContacts[]
+      |
+      v
+[Employee]   คลิกเลือกผู้ติดต่อ (li.chat-contact-item)
+      |
+      v
+[UI: chatPanel.js]   openChat(chatId)
+   - set activeChatId
+   - contact.unread = 0 (เคลียร์ badge แจ้งเตือน)
+   - เปิดใช้งาน input/ปุ่มส่งข้อความ
+   - renderHeader(), renderMessages(), showConversationScreen()
+      |
+      v
+[Service: chatService.js]   getMessages(chatId) → คืนประวัติแชทของ chatId นั้น
+      |
+      v
+[Employee]   เห็นหน้าสนทนาเต็ม พร้อมข้อความเก่าทั้งหมด
+      |
+      v
+[Employee]   พิมพ์ข้อความใน #chatMessageInput แล้วกดปุ่มส่ง หรือ Enter
+      |
+      v
+[UI: chatPanel.js]   handleSend() ตรวจสอบ text ไม่ว่างและมี activeChatId
+      |
+      v
+[Service: chatService.js]   sendMessage(chatId, text)
+   - สร้าง timestamp ปัจจุบัน (รูปแบบ HH:mm)
+   - push {sender:"me", text, time} เข้า chatMessages[chatId]
+   - อัปเดต contact.lastMessage / lastTime
+      |
+      v
+[Data: chatData.js]   เก็บข้อความใหม่ใน object chatMessages (in-memory)
+      |
+      v
+[UI]   เคลียร์ input, renderMessages() ใหม่ (auto-scroll ลงล่างสุด),
+       renderContactList() ใหม่ (อัปเดตข้อความล่าสุดในลิสต์)
+      |
+      v
+[Employee]   เห็นข้อความของตัวเองปรากฏใน bubble ทันที
+
+หมายเหตุ: ระบบนี้เป็น demo ฝั่งเดียว — ไม่มีฝั่งคู่สนทนาโต้ตอบกลับจริง
+(ข้อความ "them" มีอยู่แล้วล่วงหน้าใน chatData.js เท่านั้น ไม่มีการรับข้อความใหม่)
+
+================================================================================
+5. APPROVAL — พนักงานสร้างคำขอ (Request OT / Request Item)
+================================================================================
+[Employee]   อยู่หน้า Approval (โหมด "My Requests" ค่าเริ่มต้น) กดปุ่ม FAB (+)
+      |
+      v
+[UI: approvalPanel.js]   showApprovalScreen("approvalChooserScreen")
+      |
+      v
+[Employee]   เลือกประเภทคำขอ: "Request OT" หรือ "Request Item"
+      |
+      |------------------------------------|
+      v                                    v
+ [UI] เปิดฟอร์ม                      [UI] เปิดฟอร์ม
+  approvalOtFormScreen                approvalItemFormScreen
+  (Date, Hours, Reason)               (Item Name, Quantity, Reason)
+      |                                    |
+      v                                    v
+[Employee] กรอกฟอร์มครบ                [Employee] กรอกฟอร์มครบ
+   แล้วกด "Submit Request"                แล้วกด "Submit Request"
+      |                                    |
+      v                                    v
+[UI: approvalPanel.js]              [UI: approvalPanel.js]
+   submitOtForm(e)                     submitItemForm(e)
+   - e.preventDefault()                - e.preventDefault()
+   - อ่านค่า otDate/otHours/otReason   - อ่านค่า itemName/itemQty/itemReason
+      |                                    |
+      \------------------|----------------/
+                          v
+[Service: approvalService.js]   createRequest({ typeKey, requesterId: user.id,
+   approverId: user.approverId, details })
+   - requesterId มาจาก currentUser
+   - approverId มาจาก user.approverId (กำหนดไว้ล่วงหน้าใน Admin > Organization,
+     ดูหัวข้อ 8) — ระบบไม่ได้ให้ผู้ใช้เลือกผู้อนุมัติเอง
+      |
+      v
+[Service]   สร้าง object คำขอใหม่:
+   id = `AP-${1000 + requestSeq}` (running number ต่อจากข้อมูล mock เดิม)
+   dateRequested = วันนี้ (ISO date)
+   status = "pending"
+      |
+      v
+[Data: approvalData.js → approvalRequests[]]   push คำขอใหม่เข้า array (in-memory)
+      |
+      v
+[UI: approvalPanel.js]   form.reset() → setMode("myRequests") →
+   showApprovalScreen("approvalListScreen") → renderList()
+      |
+      v
+[Employee]   กลับมาหน้า "My Requests" เห็นคำขอใหม่สถานะ "pending" ทันที
+      |
+      v
+[Approver]   (แยกเซสชัน) เมื่อผู้อนุมัติที่ตรงกับ approverId ล็อกอินและเข้า
+   โหมด "To Approve" จะเห็นคำขอนี้รออยู่ → ต่อที่หัวข้อ 6
+
+================================================================================
+6. APPROVAL — ผู้อนุมัติพิจารณาคำขอ (Approve / Reject)
+================================================================================
+[Approver]   ล็อกอินด้วยบัญชีที่มี role === "approver"
+      |
+      v
+[UI: approvalPanel.js]   refreshApprovalPanel() ตรวจสอบ user.role === "approver"
+   → เปิดใช้งานปุ่ม #toApproveModeBtn (ปกติถูกซ่อนด้วย hidden สำหรับพนักงานทั่วไป)
+      |
+      v
+[Approver]   คลิกแท็บโหมด "To Approve"
+      |
+      v
+[UI: approvalPanel.js]   setMode("toApprove") → renderList()
+      |
+      v
+[Service: approvalService.js]   getRequestsForApprover(user.id)
+      |
+      v
+[Data: approvalData.js]   filter approvalRequests ที่ approverId ตรงกับผู้อนุมัติ
+   ปัจจุบัน (ไม่ว่าจะมาจาก request OT/Item ที่พนักงานสร้าง หรือคำขออื่น ๆ ใน mock
+   data เช่น leave, expense, purchase)
+      |
+      v
+[UI]   (ทางเลือก) filterByStatus() ตามแท็บ All / Pending / Approved / Rejected
+      |
+      v
+[Approver]   คลิกที่แถวคำขอ → toggle class "expanded" เพื่อดูรายละเอียดเต็ม (details)
+      |
+      v
+   <สถานะคำขอเป็น "pending" หรือไม่?>
+      |                                    |
+     ไม่ใช่ (approved/rejected แล้ว)         ใช่
+      |                                    |
+      v                                    v
+[UI]  ไม่มีปุ่ม Approve/Reject         [UI]  แสดงปุ่ม "Approve" และ "Reject"
+   ให้กด (ดูได้อย่างเดียว)                  ในส่วน approval-row-actions
+      |                                    |
+      v                                    v
+[Approver]  ดูรายละเอียดจบ            [Approver]  กดปุ่ม "Approve" หรือ "Reject"
+                                              |
+                                              v
+                                   [UI: approvalPanel.js]  e.stopPropagation()
+                                       (ป้องกัน toggle ซ้ำ) → อ่าน request id
+                                       และ action จากปุ่มที่กด
+                                              |
+                                              v
+                                   [Service: approvalService.js]
+                                       updateStatus(requestId, "approved"/"rejected")
+                                              |
+                                              v
+                                   [Data: approvalData.js]  หา request ตาม id
+                                       แล้วเปลี่ยน r.status โดยตรง (mutate in-memory)
+                                              |
+                                              v
+                                   [UI]  renderList() ใหม่ → badge สถานะเปลี่ยนสี/ข้อความ
+                                       ทันที ปุ่ม Approve/Reject หายไป (เพราะไม่ pending แล้ว)
+                                              |
+                                              v
+                                   [Approver]  เห็นผลการอนุมัติอัปเดตทันที
+                                              |
+                                              v
+                                   [Employee]  (เมื่อกลับมาเช็คโหมด "My Requests")
+                                       จะเห็นสถานะคำขอของตนเองเปลี่ยนตามที่ผู้อนุมัติกด
+                                       (เพราะอ่านจาก approvalRequests[] เดียวกัน)
+
+หมายเหตุสำคัญ: การอัปเดตสถานะเป็นการ mutate array ใน memory ของแท็บเบราว์เซอร์
+เดียวกัน ไม่มีการซิงค์ข้ามอุปกรณ์/แท็บ/ผู้ใช้จริง เพราะไม่มี backend
+
+================================================================================
+7. PROFILE — ดูและแก้ไขโปรไฟล์ (รวมเปลี่ยนรูป)
+================================================================================
+[UI: profilePanel.js]   หลัง login เรียก refreshProfilePanel() → renderProfile()
+   แสดงชื่อ, ตำแหน่ง·คลัง, ประเภทบัญชี (Admin/Approver/Employee), username,
+   และ info list (Email/Phone/Address) — ปุ่ม Admin Settings จะซ่อนถ้า !isAdmin
+      |
+      v
+[Employee]   กดปุ่ม "Edit Profile"
+      |
+      v
+[UI: profilePanel.js]   openEditScreen()
+   - เติมค่าปัจจุบันลงในฟอร์ม (name, email, phone, address)
+   - renderAvatar() แสดงรูปปัจจุบัน (หรือตัวอักษรย่อถ้ายังไม่มีรูป)
+   - showProfileScreen("profileEditScreen")
+      |
+      v
+[Employee]   (ทางเลือก) กด "Change Photo" → เลือกไฟล์รูปจากอุปกรณ์
+      |
+      v
+[UI: profilePanel.js]   handlePhotoChange(e)
+      |
+      v
+[Device: Browser FileReader API]   readAsDataURL(file) แปลงไฟล์เป็น Base64 data URL
+      |
+      v
+[UI]   reader.onload → user.photo = dataURL (เขียนตรงลง object user ใน memory)
+   → renderAvatar() แสดงรูปใหม่ทันทีใน preview (ยังไม่ต้องกด Save)
+      |
+      v
+[Employee]   แก้ไขช่องอื่น ๆ (Name/Email/Phone/Address) ตามต้องการ
+      |
+      v
+[Employee]   กด "Save Changes"
+      |
+      v
+[UI: profilePanel.js]   handleEditSubmit(e)
+   - e.preventDefault()
+   - เขียนค่าใหม่ทับลง currentUser object โดยตรง (name/email/phone/address)
+     (name ว่างจะไม่ถูกเขียนทับ — คงชื่อเดิมไว้)
+      |
+      v
+[Data: orgData.js → users[]]   object user ถูก mutate ตรง ๆ (currentUser คือ
+   reference เดียวกับ item ใน users[]) — เปลี่ยนแล้วมีผลถาวรตลอด session
+      |
+      v
+[UI]   renderProfile() ใหม่ → showProfileScreen("profileViewScreen")
+      |
+      v
+[Employee]   กลับมาหน้าโปรไฟล์หลัก เห็นข้อมูลที่แก้ไขแล้วทันที
+
+================================================================================
+8. ADMIN — ตั้งค่า ORGANIZATION (ตำแหน่ง / คลัง / สายอนุมัติ)
+================================================================================
+เข้าถึงได้เฉพาะผู้ใช้ที่ user.isAdmin === true (ในข้อมูลตั้งต้นคือ "kittipong")
+
+[Admin]   จากหน้า Profile กดปุ่ม "Admin Settings" (แสดงเฉพาะเมื่อ isAdmin)
+      |
+      v
+[UI: profilePanel.js]   openAdminScreen()
+   - ตรวจ user.isAdmin ซ้ำอีกครั้งก่อนเปิดหน้า (guard)
+   - renderOrgTable() + renderZoneTable() (ดูหัวข้อ 9 สำหรับ zone)
+   - showProfileScreen("profileAdminScreen")
+      |
+      v
+[Service: orgService.js]   getAllUsers() คืน users[] ทั้งหมด
+                            getApprovers() คืนเฉพาะ user ที่ role === "approver"
+      |
+      v
+[UI]   render การ์ดพนักงานทีละคน (org-row) แต่ละใบมี dropdown 3 ช่อง:
+   Position (จาก POSITION_LEVELS), Warehouse (จาก WAREHOUSES),
+   Approver (รายชื่อ approver ทั้งหมด ยกเว้นตัวเอง, มีตัวเลือก "— None —")
+      |
+      v
+[Admin]   เปลี่ยนค่าใน dropdown ใดก็ได้ (Position / Warehouse / Approver)
+      |
+      v
+[UI: profilePanel.js]   event "change" บน select → อ่าน data-user-id, data-field
+      |
+      v
+   <field คือช่องไหน?>
+      |                    |                       |
+   "position"          "warehouse"              "approver"
+      |                    |                       |
+      v                    v                       v
+[Service: orgService.js]  [Service]              [Service]
+ setPosition(userId,       setWarehouse(userId,    setApprover(userId,
+   select.value)              select.value)          select.value || null)
+      \                    |                       /
+       \                   |                      /
+        \------------------|---------------------/
+                            v
+[Data: orgData.js → users[]]   หา user ตาม id แล้ว mutate field ที่เกี่ยวข้อง
+   โดยตรง (in-memory) — มีผลทันทีต่อทั้งระบบในเซสชันนี้ เช่น:
+   - เปลี่ยน Approver → มีผลกับคำขอใหม่ที่จะสร้างต่อจากนี้ (หัวข้อ 5 ใช้
+     user.approverId ตอน createRequest)
+   - เปลี่ยน Warehouse → มีผลกับการตรวจ Clock-in Zone (หัวข้อ 3 ใช้
+     user.warehouse หา zone ที่ตรงกัน)
+      |
+      v
+[UI]   ถ้า userId ที่แก้ตรงกับ currentUser → renderProfile() ใหม่ทันที
+   (เพื่อให้หน้าโปรไฟล์ของ Admin เองสะท้อนค่าล่าสุดถ้าแก้ตัวเอง)
+      |
+      v
+[Admin]   เห็นการเปลี่ยนแปลงมีผลทันที ไม่ต้องกด Save เพิ่มเติม (auto-save ทุก
+   ครั้งที่ dropdown มีการ change)
+
+================================================================================
+9. ADMIN — ตั้งค่า CLOCK-IN ZONE (พิกัด GPS และรัศมี)
+================================================================================
+[Admin]   อยู่ในหน้า Admin Settings เดียวกับหัวข้อ 8 (ส่วน "Clock-In Zones")
+      |
+      v
+[UI: profilePanel.js]   renderZoneTable()
+      |
+      v
+[Service: warehouseZoneService.js]   getZone(code) สำหรับแต่ละ WAREHOUSES
+      |
+      v
+[Data: warehouseZoneData.js]   คืนค่า {lat, lng, radiusMeters} ปัจจุบันของคลังนั้น
+   (ถ้ายังไม่เคยตั้ง จะเป็นค่าว่าง "")
+      |
+      v
+[UI]   render การ์ดต่อคลัง 1 ใบ มีช่อง input: Latitude, Longitude, Radius (meters)
+      |
+      v
+[Admin]   แก้ไขค่าพิกัด/รัศมี ในช่อง input ใดก็ได้ แล้วออกจากช่อง (blur/change)
+      |
+      v
+[UI: profilePanel.js]   event "change" → อ่านค่า lat/lng/radiusMeters ทั้ง 3 ช่อง
+   จากแถวเดียวกัน แปลงเป็น parseFloat()
+      |
+      v
+   <ค่าที่ได้เป็น NaN ตัวใดตัวหนึ่งหรือไม่?>
+      |                                  |
+     ใช่ (NaN)                            ไม่ใช่ (ค่าถูกต้องครบ 3 ช่อง)
+      |                                  |
+      v                                  v
+[UI]  return ทันที ไม่บันทึกอะไร    [Service: warehouseZoneService.js]
+   (ป้องกันค่าพิกัดเพี้ยน)               setZone(code, {lat, lng, radiusMeters})
+                                              |
+                                              v
+                                   [Data: warehouseZoneData.js]
+                                       เขียนทับ object ของคลังนั้นทั้งชุด (in-memory)
+                                              |
+                                              v
+                                   [Admin]  ค่าใหม่มีผลทันที
+                                              |
+                                              v
+                                   [Employee]  (ทุกคนที่สังกัดคลังนี้) ครั้งถัดไปที่กด
+                                       Clock In/Out จะถูกตรวจสอบระยะทางด้วยพิกัด/
+                                       รัศมีใหม่นี้ทันที (ดู flow หัวข้อ 3 checkZone())
+
+================================================================================
+10. LOGOUT
+================================================================================
+[Employee]   อยู่หน้า Profile กดปุ่ม "Log Out"
+      |
+      v
+[UI: profilePanel.js]   click handler เรียก logout() แล้วเรียก onLogout
+   callback (ที่ผูกไว้ตอน initProfilePanel(showLogin) ใน main.js)
+      |
+      v
+[Service: authService.js]   logout()
+   - currentUser = null
+   - localStorage.removeItem("rewworkplace_session")
+      |
+      v
+[Data: localStorage]   ลบ session key ออก — ครั้งหน้าเปิดแอปจะไม่ auto-login
+      |
+      v
+[UI: main.js]   showLogin()
+   - #appShell เอา class "active" ออก
+   - #loginScreen ใส่ class "active"
+      |
+      v
+[Employee]   กลับมาที่หน้า Sign in (ต้อง login ใหม่)
+
+หมายเหตุ: state อื่น ๆ ที่เป็น in-memory (เช่น clock-in status, ข้อความแชทที่ส่ง
+ระหว่างเซสชัน, คำขออนุมัติที่สร้างใหม่) จะยังคงอยู่ใน memory ของแท็บเบราว์เซอร์
+จนกว่าจะ refresh หน้า — ไม่ได้ถูกล้างตอน logout
+
+================================================================================
+11. BOTTOM NAVIGATION (การสลับหน้าจอหลัก)
+================================================================================
+[Employee]   คลิกไอคอนแถบล่าง: Clock / Approval / Chat / Profile
+      |
+      v
+[UI: navigation.js]   click handler บน .bottom-nav-link
+   - e.preventDefault()
+   - หา target section ด้วย id = `view-${data-view}`
+      |
+      v
+[UI]   ลบ class "active" ออกจากทุก .view และทุกลิงก์ในแถบล่าง
+   → ใส่ class "active" ให้เฉพาะ section เป้าหมาย และลิงก์ที่ถูกคลิก
+      |
+      v
+[Employee]   เห็นหน้าจอที่เลือกแสดงผลทันที (สลับด้วย CSS class เท่านั้น
+   ไม่มีการโหลดหน้าใหม่ หรือ fetch ข้อมูลเพิ่มเติม — ข้อมูลถูก render ไว้ล่วงหน้า
+   ตอน init/refresh ของแต่ละ panel แล้ว)
+
+================================================================================
+สรุปความสัมพันธ์ระหว่าง Flow (Cross-Flow Dependencies)
+================================================================================
+- Flow 8 (Admin ตั้งค่า Approver) ------> เป็นอินพุตของ Flow 5 (user.approverId
+  ถูกใช้ตอนสร้างคำขอใหม่)
+- Flow 8 (Admin ตั้งค่า Warehouse) -----> เป็นอินพุตของ Flow 3 (user.warehouse
+  ใช้หา zone ที่ต้องตรวจสอบ)
+- Flow 9 (Admin ตั้งค่า Zone lat/lng/radius) --> เป็นอินพุตของ Flow 3
+  (checkZone() เทียบระยะทางจริงกับค่านี้)
+- Flow 5 (พนักงานสร้างคำขอ) ------------> ปรากฏใน Flow 6 (ผู้อนุมัติเห็นและ
+  กดอนุมัติ/ปฏิเสธ) เพราะทั้งคู่อ่าน/เขียน array approvalRequests[] ร่วมกัน
+- Flow 2 (Login) ----------------------> เป็นจุดเริ่มของทุก Flow อื่น (ต้องมี
+  currentUser ก่อนเสมอ มิฉะนั้น service หลายตัว return null/ทำงานไม่ได้)
+================================================================================

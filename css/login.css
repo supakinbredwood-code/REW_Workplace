@@ -1,0 +1,36 @@
+/* Login Screen */
+.login-card { width: 100%; }
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.login-brand .brand-icon { color: var(--accent-primary); font-size: 20px; }
+
+.login-title {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-error {
+    min-height: 16px;
+    font-size: 12px;
+    color: var(--accent-red);
+    margin: 6px 0 4px;
+}
+
+.login-hint {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 18px;
+    line-height: 1.6;
+}
