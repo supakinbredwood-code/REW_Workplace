@@ -1,17 +1,13 @@
 /* Login Screen */
 .login-card { width: 100%; }
 
-.login-brand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 28px;
-    font-weight: 700;
-    font-size: 18px;
+.logo {
+    display: block;
+    height: 100px;
+    width: auto;
+    object-fit: contain;
+    margin: 0 auto 28px;
 }
-
-.login-brand .brand-icon { color: var(--accent-primary); font-size: 20px; }
 
 .login-title {
     font-size: 20px;
